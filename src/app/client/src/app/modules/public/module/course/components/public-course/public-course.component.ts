@@ -1,4 +1,4 @@
-import { combineLatest, Subject, of, Observable } from 'rxjs';
+import { combineLatest, Subject, of, Observable, from } from 'rxjs';
 import { PageApiService, OrgDetailsService, FormService, UserService } from '@sunbird/core';
 import { Component, OnInit, OnDestroy, EventEmitter } from '@angular/core';
 import {
@@ -9,7 +9,7 @@ import * as _ from 'lodash';
 import { IInteractEventEdata, IImpressionEventInput } from '@sunbird/telemetry';
 import { CacheService } from 'ng2-cache-service';
 import { PublicPlayerService } from './../../../../services';
-import { takeUntil, map, mergeMap, first, filter, catchError } from 'rxjs/operators';
+import { takeUntil, map, mergeMap, first, filter, catchError, delay, concat,  concatAll, zip, concatMap } from 'rxjs/operators';
 
 @Component({
   templateUrl: './public-course.component.html',
@@ -21,7 +21,7 @@ export class PublicCourseComponent implements OnInit, OnDestroy {
   public showLoginModal = false;
   public baseUrl: string;
   public noResultMessage: INoResultMessage;
-  public carouselData: Array<ICaraouselData> = [];
+  public carouselData: Array<any> = [];
   public filterType: string;
   public queryParams: any;
   public hashTagId: string;
@@ -129,10 +129,40 @@ export class PublicCourseComponent implements OnInit, OnDestroy {
       // exists: [],
       params : this.configService.appConfig.ExplorePage.contentApiQueryParams
     };
-    this.pageApiService.getPageData(option).pipe(takeUntil(this.unsubscribe$))
-      .subscribe(data => {
+    this.pageApiService.getPageData(option).pipe(
+      mergeMap((data) => {
+        const carouselData = this.prepareCarouselData(_.get(data, 'sections'));
+        carouselData.push(carouselData[0]);
+        carouselData.push(carouselData[0]);
+        carouselData.push(carouselData[0]);
+        carouselData.push(carouselData[0]);
+        carouselData.push(carouselData[0]);
+        // console.log('000000000000---------------------------------------------------------------------------------------------------');
+        return from(carouselData);
+      }),
+      concatMap((x, y) => {
+        console.log('emiting data', y);
+        return of(x).pipe(delay(y * 150));
+      }),
+      // map((value) => {
+      //   return of(value).pipe(delay(1));
+      // }),
+      // concatAll(),
+      takeUntil(this.unsubscribe$))
+      .subscribe((data) => {
         this.showLoader = false;
-        this.carouselData = this.prepareCarouselData(_.get(data, 'sections'));
+        // console.log(data);
+        this.carouselData.push(data);
+        // this.carouselData = carouselData;
+        // data.forEach((eachSection, index) => {
+        //   if (index === 0) {
+        //     this.carouselData.push(eachSection);
+        //   } else {
+        //     setTimeout(() => {
+        //         this.carouselData.push(eachSection);
+        //     }, index * 100);
+        //   }
+        // });
       }, err => {
         this.showLoader = false;
         this.carouselData = [];
